@@ -1,170 +1,188 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Quản lý sinh viên</title>
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8" />
+  <title>Quản lý sinh viên</title>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+  />
 </head>
+
 <body class="container mt-4">
+  <h3 class="text-center mb-4">QUẢN LÝ SINH VIÊN</h3>
 
-<h3 class="text-center mb-3">DANH SÁCH SINH VIÊN</h3>
+  <div class="card mb-4">
+    <div class="card-header">Thêm / Sửa sinh viên</div>
+    <div class="card-body">
+      <input id="id" class="form-control mb-2" placeholder="ID" />
+      <input id="name" class="form-control mb-2" placeholder="Tên" />
+      <input id="email" class="form-control mb-2" placeholder="Email" />
 
-<input type="text" id="search" class="form-control mb-3"
-       placeholder="Tìm theo tên..." onkeyup="searchStudent()">
+      <div class="d-flex gap-2">
+        <button id="btnSubmit" class="btn btn-primary" onclick="submitForm()">Thêm</button>
+        <button
+          id="btnCancel"
+          class="btn btn-secondary"
+          onclick="resetForm()"
+          style="display: none;"
+        >
+          Hủy
+        </button>
+      </div>
+    </div>
+  </div>
 
-<table class="table table-bordered">
+  <h4 class="mb-3">Danh sách sinh viên</h4>
+  <input
+    type="text"
+    id="search"
+    class="form-control mb-3"
+    placeholder="Tìm theo tên..."
+    onkeyup="searchStudent()"
+  />
+
+  <table class="table table-bordered table-striped">
     <thead>
-    <tr>
+      <tr>
         <th style="width: 80px;">ID</th>
         <th>Tên</th>
         <th>Email</th>
         <th style="width: 180px;">Hành động</th>
-    </tr>
+      </tr>
     </thead>
     <tbody id="studentTable"></tbody>
-</table>
+  </table>
 
-<h4 class="mt-4">Thêm / Sửa sinh viên</h4>
-<input id="id" class="form-control mb-2" placeholder="ID">
-<input id="name" class="form-control mb-2" placeholder="Tên">
-<input id="email" class="form-control mb-2" placeholder="Email">
+  <script>
+    const API = "/api/students";
+    let editingId = null;
 
-<div class="d-flex gap-2">
-    <button id="btnSubmit" class="btn btn-primary" onclick="submitForm()">Thêm</button>
-    <button id="btnCancel" class="btn btn-secondary" onclick="resetForm()" style="display:none;">Hủy</button>
-</div>
+    function loadStudents() {
+      fetch(API)
+        .then((res) => res.json())
+        .then((data) => renderTable(data))
+        .catch((err) => console.error("Lỗi loadStudents:", err));
+    }
 
-<script>
-const API = "http://localhost:8080/api/students";
-let editingId = null;
-
-// ====== LOAD LIST ======
-function loadStudents() {
-    fetch(API)
-        .then(res => res.json())
-        .then(data => renderTable(data))
-        .catch(err => console.error("Lỗi loadStudents:", err));
-}
-
-function renderTable(data) {
-    let html = "";
-    data.forEach(s => {
-        // Nhét object vào onclick an toàn hơn: truyền theo từng field
+    function renderTable(data) {
+      let html = "";
+      data.forEach((s) => {
         html += `
-        <tr>
+          <tr>
             <td>${s.id}</td>
             <td>${s.name ?? ""}</td>
             <td>${s.email ?? ""}</td>
             <td>
-                <button class="btn btn-warning btn-sm me-1"
-                    onclick="startEdit(${s.id}, '${escapeQuotes(s.name)}', '${escapeQuotes(s.email)}')">Sửa</button>
-
-                <button class="btn btn-danger btn-sm"
-                    onclick="deleteStudent(${s.id})">Xóa</button>
+              <button
+                class="btn btn-warning btn-sm me-1"
+                onclick="startEdit(${s.id}, '${escapeQuotes(s.name)}', '${escapeQuotes(s.email)}')"
+              >
+                Sửa
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                onclick="deleteStudent(${s.id})"
+              >
+                Xóa
+              </button>
             </td>
-        </tr>`;
-    });
-    document.getElementById("studentTable").innerHTML = html;
-}
-
-// escape để không bị lỗi khi tên/email có dấu nháy '
-function escapeQuotes(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/'/g, "\\'");
-}
-
-// ====== ADD / UPDATE ======
-async function submitForm() {
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-
-  if (!name) return alert("Tên không được để trống!");
-  if (!email) return alert("Email không được để trống!");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert("Email không hợp lệ!");
-
-  const payload = { name, email }; // ✅ bỏ id
-
-  try {
-    if (!editingId) {
-      await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+          </tr>
+        `;
       });
-    } else {
-      const res = await fetch(`${API}/update/${editingId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const updated = await res.json();
-      console.log("UPDATED:", updated);
+      document.getElementById("studentTable").innerHTML = html;
     }
 
-    resetForm();
-    loadStudents();
-  } catch (err) {
-    console.error("Lỗi submitForm:", err);
-    alert("Có lỗi xảy ra khi gửi dữ liệu!");
-  }
-}
+    function escapeQuotes(str) {
+      if (str === null || str === undefined) return "";
+      return String(str).replace(/'/g, "\\'");
+    }
 
-function startEdit(id, name, email) {
-  editingId = id;
+    async function submitForm() {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
 
-  document.getElementById("id").value = id;
-  document.getElementById("id").disabled = true; // ✅ khóa ID khi sửa
-  document.getElementById("name").value = name || "";
-  document.getElementById("email").value = email || "";
+      if (!name) return alert("Tên không được để trống!");
+      if (!email) return alert("Email không được để trống!");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert("Email không hợp lệ!");
 
-  document.getElementById("btnSubmit").textContent = "Cập nhật";
-  document.getElementById("btnCancel").style.display = "inline-block";
-}
+      const payload = { name, email };
 
-function resetForm() {
-  editingId = null;
-  document.getElementById("id").value = "";
-  document.getElementById("id").disabled = false; // ✅ mở lại
-  document.getElementById("name").value = "";
-  document.getElementById("email").value = "";
+      try {
+        if (!editingId) {
+          await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+        } else {
+          const res = await fetch(`${API}/update/${editingId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const updated = await res.json();
+          console.log("UPDATED:", updated);
+        }
 
-  document.getElementById("btnSubmit").textContent = "Thêm";
-  document.getElementById("btnCancel").style.display = "none";
-}
+        resetForm();
+        loadStudents();
+      } catch (err) {
+        console.error("Lỗi submitForm:", err);
+        alert("Có lỗi xảy ra khi gửi dữ liệu!");
+      }
+    }
 
+    function startEdit(id, name, email) {
+      editingId = id;
 
-// ====== DELETE ======
-function deleteStudent(id) {
-    if (!confirm("Bạn có chắc muốn xóa id: " + id + "?")) return;
+      document.getElementById("id").value = id;
+      document.getElementById("id").disabled = true;
+      document.getElementById("name").value = name || "";
+      document.getElementById("email").value = email || "";
 
-    // Giữ đúng theo backend hiện tại của bạn: POST /delete/{id}
-    fetch(`${API}/delete/${id}`, { method: "POST" })
+      document.getElementById("btnSubmit").textContent = "Cập nhật";
+      document.getElementById("btnCancel").style.display = "inline-block";
+    }
+
+    function resetForm() {
+      editingId = null;
+
+      document.getElementById("id").value = "";
+      document.getElementById("id").disabled = false;
+      document.getElementById("name").value = "";
+      document.getElementById("email").value = "";
+
+      document.getElementById("btnSubmit").textContent = "Thêm";
+      document.getElementById("btnCancel").style.display = "none";
+    }
+
+    function deleteStudent(id) {
+      if (!confirm("Bạn có chắc muốn xóa id: " + id + "?")) return;
+
+      fetch(`${API}/delete/${id}`, { method: "POST" })
         .then(() => loadStudents())
-        .catch(err => {
-            console.error("Lỗi xóa:", err);
-            alert("Xóa thất bại! Kiểm tra API delete.");
+        .catch((err) => {
+          console.error("Lỗi xóa:", err);
+          alert("Xóa thất bại!");
         });
-}
+    }
 
-// ====== SEARCH ======
-function searchStudent() {
-    const name = document.getElementById("search").value.trim();
+    function searchStudent() {
+      const name = document.getElementById("search").value.trim();
 
-    // Nếu rỗng thì load lại tất cả
-    if (!name) {
+      if (!name) {
         loadStudents();
         return;
+      }
+
+      fetch(`${API}/search?name=${encodeURIComponent(name)}`)
+        .then((res) => res.json())
+        .then((data) => renderTable(data))
+        .catch((err) => console.error("Lỗi searchStudent:", err));
     }
 
-    fetch(`${API}/search?name=${encodeURIComponent(name)}`)
-        .then(res => res.json())
-        .then(data => renderTable(data))
-        .catch(err => console.error("Lỗi searchStudent:", err));
-}
-
-loadStudents();
-</script>
-
+    loadStudents();
+  </script>
 </body>
 </html>
